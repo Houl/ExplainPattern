@@ -1,11 +1,12 @@
 *explainpat.txt*    Give detailed help on a regexp pattern.
 
-		    For Vim version 7.0.  Last change: 2013 Mar 09
+		    For Vim version 7.0.  Last change: 2013 Jun 29
 		    By Andy Wokula <anwoku@yahoo.de>
 
 						*explainpat* *explainpat.vim*
 ExplainPat is a plugin to inspect a Vim regexp pattern and show a line of help
-for each found regexp item.
+for each found regexp item.  Purpose is to get a better view on somebody
+else's complex regexp string.  It may also help with spotting mistakes.
 
 If you find that it explains something wrong, please drop me an email.
 
@@ -22,6 +23,7 @@ URL http://vim.sourceforge.net/scripts/script.php?script_id=4364
 				/	explain the last search pattern
 				*	explain pattern from the clipboard
 				a	explain pattern from register a
+				etc.
 
 Notes:
 The pattern is first converted into a purely |magic| pattern using
@@ -34,11 +36,29 @@ specifiers are effectively removed from the explanation.
 	\)         end of group
 
 ==============================================================================
+TODO:
+
+Ideas:
+- If the user already knows regular expressions but of a different kind,
+  explain items in that different language.
+  Other regexp idioms:
+	Perl, Python, Emacs, Java, C#, Sed, Grep;
+	Vim ... very magic, nomagic, very nomagic
+  Possible config var name:
+  	g:explainpat_user_knows = "Perl"
+  	g:explainpat_background = "Perl"
+	g:explainpat_in_terms_of = "Perl"
+	g:explainpat_language = "Perl"
+
+==============================================================================
 History:
+
+v0.6
++ BF `[]` is a literal string (not a collection)
 
 v0.5
 + BF `$\n^`
-+ wording: `\|' is not an "OR branch" (it separates or branches)
++ wording: `\|` is not an "OR branch" (it separates or branches)
 + NF added tests (not part of release)
 + NF accept custom help printer (for testing purpose, could also be used to
   export HTML etc.)
@@ -46,8 +66,8 @@ v0.5
 v0.4
 + BF `[foo` is a literal string
 + BF for |/star|, |/^| and |/$|, distinguish position in the pattern
-  (sometimes these become literal); special cases: `^**', `^^', `\c^^', `$$',
-  `a\|^b', `a\&*b', `[ab', `\_[ab', ...
+  (sometimes these become literal); special cases: `^**`, `^^`, `\c^^`, `$$`,
+  `a\|^b`, `a\&*b`, `[ab`, `\_[ab`, ...
 
 v0.3
 + BF accept `\z(...\)` and `\z[N]`
@@ -61,10 +81,10 @@ v0.2
 
 v0.1 (initial version)
 + start of "first" capturing group, start of 2nd ...
-+ `\|' should get less indent than the branches, do we need to create an
++ `\|` should get less indent than the branches, do we need to create an
   AST?	! no, keep it straight forward
-+ \%[...]
-+ \{, \{-
++ `\%[...]`
++ `\{`, `\{-`
 
 ==============================================================================
 vim:tw=78:fo=tcq2:sts=0:ts=8:sw=8:fdm=marker:fmr=^_\^,^\^:ft=help:

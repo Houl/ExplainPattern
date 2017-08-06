@@ -1,14 +1,31 @@
 " File:         explainpat.vim
 " Created:      2011 Nov 02
-" Last Change:  2013 Mar 09
-" Rev Days:     8
+" Last Change:  2013 Dec 30
+" Rev Days:     12
 " Author:	Andy Wokula <anwoku@yahoo.de>
 " License:	Vim License, see :h license
-" Version:	0.5
+" Version:	0.7
 
 " Implements :ExplainPattern [pattern]
 
+" History: "{{{
+" 2013 Jun 21	AND/OR text is confusing, removed
+" 2013 Apr 20	...
+"}}}
+
 " TODO {{{
+" - add something like "(empty) ... match everywhere" ... example: '\v(&&|str)'
+"   Pattern: \v(&&|str)
+"   Magic Pattern: \(\&\&\|str\)
+"     \(         start of first capturing group
+"     |                  (empty) match everywhere
+"     |   \&         AND
+"     |                  (empty) match everywhere
+"     |   \&         AND
+"     |                  (empty) match everywhere
+"     | \|         OR
+"     |   str        literal string (3 atom(s))
+"     \)         end of group
 " - more testing, completeness check
 " ? detailed collections
 " ? literal string: also print the unescaped magic items
@@ -52,7 +69,7 @@ func! explainpat#ExplainPattern(cmd_arg, ...) "{{{
 
     let hulit = a:0>=1 && type(a:1)==s:DICT ? a:1 : s:NewHelpPrinter()
     call hulit.AddIndent('  ')
-    let bull = s:NewTokenBiter(magicpat, '')
+    let bull = s:NewTokenBiter(magicpat)
     while !bull.AtEnd()
 	let item = bull.Bite(s:magic_item_pattern)
 	if item != ''
@@ -83,7 +100,7 @@ let s:FUNCREF = type(function("tr"))
 let s:LIST = type([])
 " }}}
 
-let s:magic_item_pattern = '\C^\%(\\\%(@<.\|%[dxouU[(^$V#<>]\=\|z[1-9se(]\|@[>=!]\|_[[^$.]\=\|.\)\|.\)'
+let s:magic_item_pattern = '\C^\%(\\\%(@<\|%#=\|%[dxouU[(^$V#<>]\=\|z[1-9se(]\|@[>=!]\|_[[^$.]\=\|.\)\|.\)'
 
 let s:doc = {} " {{{
 " this is all the help data ...
@@ -92,7 +109,7 @@ let s:doc = {} " {{{
 
 func! s:DocOrBranch(bull, hulit, item) "{{{
     call a:hulit.RemIndent()
-    call a:hulit.Print(a:item, "OR (separate alternatives)")
+    call a:hulit.Print(a:item, "OR")
     call a:hulit.AddIndent('  ')
     let s:at_begin_of_pat = 2
 endfunc "}}}
@@ -104,7 +121,7 @@ func! s:DocBeginOfPat(bull, hulit, item, msg) "{{{
     let s:at_begin_of_pat = 2
 endfunc "}}}
 
-let s:doc['\&'] = [function("s:DocBeginOfPat"), "AND (separate concats, all must match)"]
+let s:doc['\&'] = [function("s:DocBeginOfPat"), "AND"]
 
 let s:ord = split('n first second third fourth fifth sixth seventh eighth ninth')
 
@@ -160,7 +177,7 @@ func! s:DocBraceMulti(bull, hulit, item) "{{{
 	    call a:hulit.Print(a:item. rest, "(multi) N to M, greedy")
 	endif
     else
-	echoerr printf('ExplainPattern: cannot parse %s', a:item. a:bull.Rest())
+	call a:hulit.Print(a:item, "(invalid) incomplete `\\{...}' item")
     endif
 endfunc "}}}
 
@@ -169,8 +186,19 @@ let s:doc['\{'] = function("s:DocBraceMulti")
 let s:doc['\@>'] = "(multi) match preceding atom like a full pattern"
 let s:doc['\@='] = "(assertion) require match for preceding atom"
 let s:doc['\@!'] = "(assertion) forbid match for preceding atom"
-let s:doc['\@<='] = "(assertion) require match for preceding atom to the left"
-let s:doc['\@<!'] = "(assertion) forbid match for preceding atom to the left"
+
+func! s:DocBefore(bull, hulit, item) "{{{
+    let rest = a:bull.Bite('^[=!]')
+    if rest == "="
+	call a:hulit.Print(a:item.rest, "(assertion) require match for preceding atom to the left")
+    elseif rest == "!"
+	call a:hulit.Print(a:item.rest, "(assertion) forbid match for preceding atom to the left")
+    else
+	call a:hulit.Print(a:item.rest, "(invalid) `\\@<' must be followed by `=' or `!'")
+    endif
+endfunc "}}}
+
+let s:doc['\@<'] = function("s:DocBefore")
 
 func! s:DocCircumFlex(bull, hulit, item) "{{{
     if s:at_begin_of_pat >= 1
@@ -211,7 +239,8 @@ func! s:DocUnderscore(bull, hulit, item) "{{{
 	let cclass_doc = get(s:doc, '\'. cclass, '(invalid character class)')
 	call a:hulit.Print(a:item. cclass, printf('%s or end-of-line', cclass_doc))
     else
-	echoerr printf('ExplainPattern: cannot parse %s', a:item. matchstr(a:bull.Rest(), '.'))
+	call a:hulit.Print(a:item, "(invalid) `\\_' should be followed by a letter or `[...]'")
+	" echoerr printf('ExplainPattern: cannot parse %s', a:item. matchstr(a:bull.Rest(), '.'))
     endif
 endfunc "}}}
 
@@ -224,6 +253,21 @@ let s:doc['\%^'] = "(assertion) match at begin of buffer"
 let s:doc['\%$'] = "(assertion) match at end of buffer"
 let s:doc['\%V'] = "(assertion) match within the Visual area"
 let s:doc['\%#'] = "(assertion) match with cursor position"
+
+func! s:DocRegexEngine(bull, hulit, item) "{{{
+    let engine = a:bull.Bite('^[012]')
+    if engine == "0"
+	call a:hulit.Print(a:item.engine, 'Force automatic selection of the regexp engine (since v7.3.970).')
+    elseif engine == "1" 
+	call a:hulit.Print(a:item.engine, 'Force using the old engine (since v7.3.970).')
+    elseif engine == "2"
+	call a:hulit.Print(a:item.engine, 'Force using the NFA engine (since v7.3.970).')
+    else
+	call a:hulit.Print(a:item, '(invalid) \%#= can only be followed by 0, 1, or 2')
+    endif
+endfunc "}}}
+
+let s:doc['\%#='] = function("s:DocRegexEngine")
 
 " \%'m   \%<'m   \%>'m
 " \%23l  \%<23l  \%>23l
@@ -244,7 +288,8 @@ func! s:DocBspercAt(bull, hulit, item) "{{{
 	elseif type ==# "v"
 	    call a:hulit.Print(a:item.rest, "match in virtual column ". number)
 	else
-	    echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
+	    call a:hulit.Print(a:item.rest, "(invalid) incomplete `\\%' item")
+	    " echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
 	endif
     endif
 endfunc "}}}
@@ -262,7 +307,8 @@ func! s:DocBspercBefore(bull, hulit, item) "{{{
 	elseif type ==# "v"
 	    call a:hulit.Print(a:item.rest, "match before virtual column ". number)
 	else
-	    echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
+	    call a:hulit.Print(a:item.rest, "(invalid) incomplete `\\%<' item")
+	    " echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
 	endif
     endif
 endfunc "}}}
@@ -280,7 +326,8 @@ func! s:DocBspercAfter(bull, hulit, item) "{{{
 	elseif type ==# "v"
 	    call a:hulit.Print(a:item.rest, "match after virtual column ". number)
 	else
-	    echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
+	    call a:hulit.Print(a:item.rest, "(invalid) incomplete `\\%>' item")
+	    " echoerr printf('ExplainPattern: incomplete item %s', a:item. rest)
 	endif
     endif
 endfunc "}}}
@@ -348,14 +395,14 @@ let s:coll_skip_pat = '^\^\=]\=\%(\%(\\[\^\]\-\\bertn]\|\[:\w\+:]\|\[=.=]\|\[\..
 
 func! s:DocCollection(bull, hulit, item) "{{{
     let collstr = a:bull.Bite(s:coll_skip_pat)
-    if collstr != ""
+    if collstr == "" || collstr == "]"
+	call a:hulit.AddLiteral('['. collstr)
+    else
 	let inverse = collstr =~ '^\^'
 	let with_nl = a:item == '\_['
 	let descr = inverse ? printf('collection not matching [%s', collstr[1:]) : 'collection'
 	let descr_nl = printf("%s%s", (inverse && with_nl ? ', but' : ''), (with_nl ? ' with end-of-line added' : ''))
 	call a:hulit.Print(a:item. collstr, descr. descr_nl)
-    else
-	call a:hulit.AddLiteral('[')
     endif
 endfunc "}}}
 
@@ -484,8 +531,9 @@ func! s:NewHelpPrinter() "{{{
 	    if self.literals =~ '\\'
 		let self.literals = substitute(self.literals, '\\\(.\)', '\1', 'g')
 	    endif
-	    let so = self.literals =~ '[^ ]' ? '' : ', spaces only'
-	    echon " (". strchars(self.literals). " atom(s)". so.")"
+	    let spconly = self.literals =~ '[^ ]' ? '' : ', spaces only'
+	    let nlit = strchars(self.literals)
+	    echon " (". nlit. (nlit==1 ? " atom" : " atoms"). spconly.")"
 	endif
 	echohl None
 	let self.literals = ''
@@ -521,18 +569,15 @@ func! s:NewHelpPrinter() "{{{
     return obj
 endfunc "}}}
 
-func! s:NewTokenBiter(str, ...) "{{{
+func! s:NewTokenBiter(str) "{{{
     " {str}	string to eat pieces from
-    " {a:1}	pattern to skip separators
-    let whitepat = a:0>=1 ? a:1 : '^\s*'
-    let obj = {'str': a:str, 'whitepat': whitepat}
+    let obj = {'str': a:str}
 
     " consume piece from start of input matching {pat}
     func! obj.Bite(pat) "{{{
 	" {pat}	    should start with '^'
-	let skip = matchend(self.str, self.whitepat)
-	let bite = matchstr(self.str, a:pat, skip)
-	let self.str = strpart(self.str, matchend(self.str, self.whitepat, skip + strlen(bite)))
+	let bite = matchstr(self.str, a:pat)
+	let self.str = strpart(self.str, strlen(bite))
 	return bite
     endfunc "}}}
 
