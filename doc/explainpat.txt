@@ -1,6 +1,6 @@
 *explainpat.txt*    Give detailed help on a regexp pattern.
 
-		    For Vim version 7.0.  Last change: 2013 Jun 29
+		    For Vim version 7.0.  Last change: 2017 Oct 20
 		    By Andy Wokula <anwoku@yahoo.de>
 
 						*explainpat* *explainpat.vim*
@@ -52,6 +52,9 @@ Ideas:
 
 ==============================================================================
 History:
+
+v0.7
++ BF `\{3,4\}` not accepted, only `\{3,4}`
 
 v0.6
 + BF `[]` is a literal string (not a collection)

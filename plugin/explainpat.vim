@@ -28,7 +28,7 @@ if v:version < 700
     finish
 endif
 
-com! -nargs=*  ExplainPattern  call explainpat#ExplainPattern(<q-args>)
+com! -nargs=?  ExplainPattern  call explainpat#ExplainPattern(<q-args>)
 
 " Modeline: {{{1
 " vim:ts=8:fdm=marker:

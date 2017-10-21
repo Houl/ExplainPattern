@@ -1,10 +1,9 @@
 " File:         explainpat.vim
 " Created:      2011 Nov 02
-" Last Change:  2013 Dec 30
-" Rev Days:     12
+" Last Change:  2017 Oct 20
+" Version:	0.7
 " Author:	Andy Wokula <anwoku@yahoo.de>
 " License:	Vim License, see :h license
-" Version:	0.7
 
 " Implements :ExplainPattern [pattern]
 
@@ -167,7 +166,7 @@ let s:doc['\?'] = "(multi) zero or one of the preceding atom"
 " let s:doc['\{-'] = "(multi) N to M, non-greedy"
 
 func! s:DocBraceMulti(bull, hulit, item) "{{{
-    let rest = a:bull.Bite('^-\=\d*\%(,\d*\)\=}')
+    let rest = a:bull.Bite('^-\=\d*\%(,\d*\)\=\\\=}')
     if rest != ""
 	if rest == '-}'
 	    call a:hulit.Print(a:item. rest, "non-greedy version of `*'")
