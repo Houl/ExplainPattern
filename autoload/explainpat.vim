@@ -1,7 +1,7 @@
 " File:         explainpat.vim
 " Created:      2011 Nov 02
-" Last Change:  2017 Oct 20
-" Version:	0.7
+" Last Change:  2017 Dec 15
+" Version:	0.9
 " Author:	Andy Wokula <anwoku@yahoo.de>
 " License:	Vim License, see :h license
 
@@ -66,7 +66,7 @@ func! explainpat#ExplainPattern(cmd_arg, ...) "{{{
     " >=1 at pos 0 or after '\|', '\&', '\(', '\%(' or '\n'; else 0 or less:
     let s:at_begin_of_pat = 1
 
-    let hulit = a:0>=1 && type(a:1)==s:DICT ? a:1 : s:NewHelpPrinter()
+    let hulit = a:0>=1 && type(a:1)==s:DICT ? a:1 : explainpat#NewHelpPrinter()
     call hulit.AddIndent('  ')
     let bull = s:NewTokenBiter(magicpat)
     while !bull.AtEnd()
@@ -99,7 +99,7 @@ let s:FUNCREF = type(function("tr"))
 let s:LIST = type([])
 " }}}
 
-let s:magic_item_pattern = '\C^\%(\\\%(@<\|%#=\|%[dxouU[(^$V#<>]\=\|z[1-9se(]\|@[>=!]\|_[[^$.]\=\|.\)\|.\)'
+let s:magic_item_pattern = '\C^\%(\\\%(%#=\|%[dxouU[(^$V#<>]\=\|z[1-9se(]\|@[>=!]\=\|_[[^$.]\=\|.\)\|.\)'
 
 let s:doc = {} " {{{
 " this is all the help data ...
@@ -187,17 +187,21 @@ let s:doc['\@='] = "(assertion) require match for preceding atom"
 let s:doc['\@!'] = "(assertion) forbid match for preceding atom"
 
 func! s:DocBefore(bull, hulit, item) "{{{
-    let rest = a:bull.Bite('^[=!]')
-    if rest == "="
+    let rest = a:bull.Bite('^\d*\%[<[=!]]')
+    if rest == "<="
 	call a:hulit.Print(a:item.rest, "(assertion) require match for preceding atom to the left")
-    elseif rest == "!"
+    elseif rest == "<!"
 	call a:hulit.Print(a:item.rest, "(assertion) forbid match for preceding atom to the left")
+    elseif rest =~ '^\d\+<='
+	call a:hulit.Print(a:item.rest, printf("(assertion) like `\\@<=', looking back at most %s bytes (since Vim 7.3.1037)", s:SillyCheck(matchstr(rest, '\d\+'))))
+    elseif rest =~ '^\d\+<!'
+	call a:hulit.Print(a:item.rest, printf("(assertion) like `\\@<!', looking back at most %s bytes (since Vim 7.3.1037)", s:SillyCheck(matchstr(rest, '\d\+'))))
     else
-	call a:hulit.Print(a:item.rest, "(invalid) `\\@<' must be followed by `=' or `!'")
+	call a:hulit.Print(a:item.rest, "(invalid) incomplete item")
     endif
 endfunc "}}}
 
-let s:doc['\@<'] = function("s:DocBefore")
+let s:doc['\@'] = function("s:DocBefore")
 
 func! s:DocCircumFlex(bull, hulit, item) "{{{
     if s:at_begin_of_pat >= 1
@@ -482,7 +486,13 @@ let s:doc['\%U'] = function("s:DocBspercHexEight") " 1234abcd
 " \V
 "}}}
 
-func! s:NewHelpPrinter() "{{{
+" {{{
+func! s:SillyCheck(digits) "{{{
+    return strlen(a:digits) < 10 ? a:digits : '{silly large number}'
+endfunc "}}}
+" }}}
+
+func! explainpat#NewHelpPrinter() "{{{
     let obj = {}
     let obj.literals = ''
     let obj.indents = []

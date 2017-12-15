@@ -1,6 +1,6 @@
 *explainpat.txt*    Give detailed help on a regexp pattern.
 
-		    For Vim version 7.0.  Last change: 2017 Oct 20
+		    For Vim version 7.0.  Last change: 2017 Dec 15
 		    By Andy Wokula <anwoku@yahoo.de>
 
 						*explainpat* *explainpat.vim*
@@ -25,6 +25,9 @@ URL http://vim.sourceforge.net/scripts/script.php?script_id=4364
 				a	explain pattern from register a
 				etc.
 
+>
+	:ExplainPattern \C^\%(\\\%(@<\|%#=\|%[dxouU[(^$V#<>]\=\|z[1-9se(]\|@[>=!]\|_[[^$.]\=\|.\)\|.\)
+
 Notes:
 The pattern is first converted into a purely |magic| pattern using
 |nwo#magic#MakeMagic()|.  This means that embedded |/\V| |/\M| |/\m| |/\v|
@@ -37,6 +40,7 @@ specifiers are effectively removed from the explanation.
 
 ==============================================================================
 TODO:
+? `\%[...]` can be nested?  But documentation |/\%[]| says no.
 
 Ideas:
 - If the user already knows regular expressions but of a different kind,
@@ -52,6 +56,12 @@ Ideas:
 
 ==============================================================================
 History:
+
+v0.9
++ BF accept `\@123<=` and `\@123<!`
+
+v0.8
+* s:NewHelpPrinter() => explainpat#NewHelpPrinter()
 
 v0.7
 + BF `\{3,4\}` not accepted, only `\{3,4}`
